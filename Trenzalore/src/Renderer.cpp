@@ -20,17 +20,14 @@ namespace Trenzalore {
 
 	void Renderer::Render(const Scene& scene, const Camera& camera)
 	{
-		Ray ray;
-		ray.m_Origin = camera.GetPosition();
+		m_ActiveScene = &scene;
+		m_ActiveCamera = &camera;
+
 		for (uint32_t y = 0; y < m_DisplayImage->GetHeight(); y++)
 		{
 			for (uint32_t x = 0; x < m_DisplayImage->GetWidth(); x++)
 			{
-				glm::vec2 coordNDC = { (float)x / (float)m_DisplayImage->GetWidth(), (float)y / (float)m_DisplayImage->GetHeight() };
-				glm::vec2 coordScreen = coordNDC * 2.0f - 1.0f; // -1 -> 1
-
-				ray.m_Direction = camera.GetRayDirections()[x + y * m_DisplayImage->GetWidth()];
-				glm::vec4 color = PerPixel(scene, ray);
+				glm::vec4 color = CastRay(x, y);
 				color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
 				m_ImageBuffer[x + y * m_DisplayImage->GetWidth()] = Utils::ConvertToRGBA(color);
 
@@ -61,13 +58,36 @@ namespace Trenzalore {
 
 	}
 
-	glm::vec4 Renderer::PerPixel(const Scene& scene, const Ray& ray)
+	glm::vec4 Renderer::CastRay(uint32_t x, uint32_t y)
 	{
-		glm::vec3 color(0, 0, 0);
-		const Object * closestObject = nullptr;
+		Ray ray;
+		ray.m_Origin = m_ActiveCamera->GetPosition();
+		ray.m_Direction = m_ActiveCamera->GetRayDirections()[x + y * m_DisplayImage->GetWidth()];
+
+		HitRecord hitRecord = TraceRay(ray);
+
+		if (hitRecord.HitScalar < 0.0f)
+		{
+			return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		}
+
+		glm::vec3 lightDirection(-1.0f, -1.0f, -1.0f);
+		glm::vec3 lightDirectionCond = glm::normalize(lightDirection);
+
+		float d = glm::max(glm::dot(hitRecord.HitNormal, -lightDirectionCond), 0.0f);
+
+		glm::vec3 color = hitRecord.Color * d;
+
+		return glm::vec4(color, 1.0f);
+
+
+	}
+	HitRecord Renderer::TraceRay(const Ray& ray)
+	{
+		const Object* closestObject = nullptr;
 		float closestT = FLT_MAX;
 
-		for each (const auto& object in scene.GetObjects())
+		for each (const auto & object in m_ActiveScene->GetObjects())
 		{
 			float t = 0.0f;
 			bool hit = object->Intersect(ray, t);
@@ -86,20 +106,27 @@ namespace Trenzalore {
 
 		if (!closestObject)
 		{
-			return glm::vec4(0, 0, 0, 0);
+			return Miss();
 		}
 
-		glm::vec3 hitPoint = ray.GetOrigin() + closestT * ray.GetDirection();
-		glm::vec3 normal = glm::normalize(hitPoint - closestObject->m_Position);
+		return ClosestHit(ray, closestObject, closestT);
 
-		glm::vec3 lightDirection(-1.0f, -1.0f, -1.0f);
-		glm::vec3 lightDirectionCond = glm::normalize(lightDirection);
+	}
+	HitRecord Renderer::ClosestHit(const Ray& ray, const Object* object, float t)
+	{
+		HitRecord hitRecord;
 
-		float d = glm::max(glm::dot(normal, -lightDirectionCond),0.0f);
+		hitRecord.HitPoint = ray.GetOrigin() + t * ray.GetDirection();
+		hitRecord.HitNormal = glm::normalize(hitRecord.HitPoint - object->m_Position);
+		hitRecord.Color = object->m_Color;
 
-		color = closestObject->m_Color * d;
+		return hitRecord;
+	}
+	HitRecord Renderer::Miss()
+	{
+		HitRecord hitRecord;
+		hitRecord.HitScalar = -1.0f;
 
-		return glm::vec4(color, 1.0f);
-
+		return hitRecord;
 	}
 }
