@@ -1,17 +1,38 @@
 #pragma once
 
+#include "Object.h"
+
 #include "glm\glm.hpp"
 
 #include <vector>
 #include <memory>
 
-struct Sphere 
+class Sphere : public Object
 {
-	glm::vec3 Position{ 0.0f };
-	glm::vec3 Hit{ 0.0f };
-	float Radius = 0.5f;
+public:
+	bool Intersect(const Ray& ray, float& t) const override
+	{
+		float a = glm::dot(ray.GetDirection(), ray.GetDirection());
+		float b = 2.0f * glm::dot(ray.GetOrigin() - m_Position, ray.GetDirection());
+		float c = glm::dot(ray.GetOrigin() - m_Position, ray.GetOrigin() - m_Position) - m_Radius * m_Radius;
 
-	glm::vec3 Color{1.0f, 0.0f, 0.0f};
+		float discriminant = b * b - 4.0f * a * c;
+
+		if (discriminant < 0.0f)
+		{
+			return false;
+		}
+
+		float t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
+		float t2 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
+
+		t = t2;
+
+		return true;
+	}
+
+public:
+	float m_Radius = 0.5f;
 };
 
 class Scene
@@ -20,11 +41,11 @@ public:
 
 	Scene() = default;
 
-	std::vector<Sphere> Scene::GetObjects() const { return m_Objects; }
-	void Add(Sphere sphere);
+	const std::vector<Object*>& Scene::GetObjects() const { return m_Objects; }
+	void Add(Object* sphere);
 	void Clear();
 
-	std::vector<Sphere> m_Objects;
+	std::vector<Object*> m_Objects;
 
 private:
 

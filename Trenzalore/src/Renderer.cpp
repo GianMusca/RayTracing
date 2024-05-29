@@ -64,53 +64,40 @@ namespace Trenzalore {
 	glm::vec4 Renderer::PerPixel(const Scene& scene, const Ray& ray)
 	{
 		glm::vec3 color(0, 0, 0);
-		const Sphere *closestSphere = nullptr;
+		const Object * closestObject = nullptr;
 		float closestT = FLT_MAX;
 
-		for each (const Sphere& sphere in scene.GetObjects())
+		for each (const auto& object in scene.GetObjects())
 		{
-			float a = glm::dot(ray.GetDirection(), ray.GetDirection());
-			float b = 2.0f * glm::dot(ray.GetOrigin() - sphere.Position, ray.GetDirection());
-			float c = glm::dot(ray.GetOrigin() - sphere.Position, ray.GetOrigin() - sphere.Position) - sphere.Radius * sphere.Radius;
+			float t = 0.0f;
+			bool hit = object->Intersect(ray, t);
 
-			float discriminant = b * b - 4.0f * a * c;
-
-			if (discriminant < 0.0f)
+			if (!hit)
 			{
 				continue;
 			}
 
-			float t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
-			float t2 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
-
-			if (!closestSphere)
+			else if (t < closestT)
 			{
-				closestSphere = &sphere;
-				closestT = t2;
+				closestObject = object;
+				closestT = t;
 			}
-			else if (t2 < closestT)
-			{
-				closestSphere = &sphere;
-				closestT = t2;
-			}
-
-
 		}
 
-		if (!closestSphere)
+		if (!closestObject)
 		{
 			return glm::vec4(0, 0, 0, 0);
 		}
 
 		glm::vec3 hitPoint = ray.GetOrigin() + closestT * ray.GetDirection();
-		glm::vec3 normal = glm::normalize(hitPoint - closestSphere->Position);
+		glm::vec3 normal = glm::normalize(hitPoint - closestObject->m_Position);
 
 		glm::vec3 lightDirection(-1.0f, -1.0f, -1.0f);
 		glm::vec3 lightDirectionCond = glm::normalize(lightDirection);
 
 		float d = glm::max(glm::dot(normal, -lightDirectionCond),0.0f);
 
-		color = closestSphere->Color * d;
+		color = closestObject->m_Color * d;
 
 		return glm::vec4(color, 1.0f);
 

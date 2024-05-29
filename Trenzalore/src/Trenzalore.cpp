@@ -18,13 +18,13 @@ public:
 	ExampleLayer()
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
-		Sphere sphere1;
-		sphere1.Radius = 0.1f;
+		Sphere* sphere1 = new Sphere();
+		sphere1->m_Radius = 0.1f;
 
-		Sphere sphere2;
-		sphere2.Color = { 0.0f, 1.0f, 1.0f };
-		sphere2.Radius = 0.1f;
-		sphere2.Position = { 1.0f, 0.0f, -5.0f };
+		Sphere* sphere2 = new Sphere();
+		sphere2->m_Color = { 0.0f, 1.0f, 1.0f };
+		sphere2->m_Radius = 0.1f;
+		sphere2->m_Position = { 1.0f, 0.0f, -5.0f };
 		m_Scene.Add(sphere2);
 		m_Scene.Add(sphere1);
 	}
@@ -46,9 +46,9 @@ public:
 		ImGui::End();
 
 		ImGui::Begin("Scene Options");
-		ImGui::DragFloat3("Position", glm::value_ptr(m_Scene.m_Objects[0].Position), 0.1f);
-		ImGui::DragFloat("Radius", &m_Scene.m_Objects[0].Radius, 0.1f);
-		ImGui::ColorPicker3("Color", glm::value_ptr(m_Scene.m_Objects[0].Color));
+		ImGui::DragFloat3("Position", glm::value_ptr(m_Scene.m_Objects[0]->m_Position), 0.1f);
+		//ImGui::DragFloat("Radius", &m_Scene.m_Objects[0].Radius, 0.1f);
+		ImGui::ColorPicker3("Color", glm::value_ptr(m_Scene.m_Objects[0]->m_Color));
 		ImGui::End();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
