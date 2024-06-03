@@ -1,5 +1,7 @@
 #include "Renderer.h"
 
+#include "Walnut\Random.h"
+
 #include <iostream>
 
 namespace Utils {
@@ -56,6 +58,9 @@ namespace Trenzalore {
 		delete[] m_ImageBuffer;
 		m_ImageBuffer = new uint32_t[width * height];
 
+		delete[] m_AccumulationBuffer;
+		m_AccumulationBuffer = new glm::vec4[width * height];
+
 	}
 
 	glm::vec4 Renderer::CastRay(uint32_t x, uint32_t y)
@@ -64,61 +69,83 @@ namespace Trenzalore {
 		ray.m_Origin = m_ActiveCamera->GetPosition();
 		ray.m_Direction = m_ActiveCamera->GetRayDirections()[x + y * m_DisplayImage->GetWidth()];
 
-		HitRecord hitRecord = TraceRay(ray);
+		int depth = 6;
+		glm::vec3 color(0.0f, 0.0f, 0.0f);
+		float multiplier = 1.0f;
 
-		if (hitRecord.HitScalar < 0.0f)
+		for (int i = 0; i < depth; i++) 
 		{
-			return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+			HitRecord hitRecord = TraceRay(ray);
+
+			if (hitRecord.HitScalar < 0.0f)
+			{
+				color += glm::vec3(0.6f, 0.7f, 0.9f) * multiplier;
+				break;
+			}
+
+			const Object* object = m_ActiveScene->GetObjects()[hitRecord.ObjectIndex];
+			const Material& material = m_ActiveScene->GetMaterials()[object->m_MaterialIndex];
+
+			glm::vec3 lightDirection(-1.0f, -1.0f, -1.0f);
+			glm::vec3 lightDirectionCond = glm::normalize(lightDirection);
+			float intensity = glm::max(glm::dot(hitRecord.HitNormal, -lightDirectionCond), 0.0f);
+
+
+			glm::vec3 objectColor = material.Albedo;
+
+			objectColor *= intensity;
+			color += objectColor * multiplier;
+
+			multiplier *= 0.5f;
+
+			ray.m_Origin = hitRecord.HitPoint + hitRecord.HitNormal * 0.0001f;
+			ray.m_Direction = glm::reflect(ray.m_Direction, hitRecord.HitNormal + material.Roughness * Walnut::Random::Vec3(-0.5f, 0.5f));
 		}
-
-		glm::vec3 lightDirection(-1.0f, -1.0f, -1.0f);
-		glm::vec3 lightDirectionCond = glm::normalize(lightDirection);
-
-		float d = glm::max(glm::dot(hitRecord.HitNormal, -lightDirectionCond), 0.0f);
-
-		glm::vec3 color = hitRecord.Color * d;
 
 		return glm::vec4(color, 1.0f);
 
-
 	}
+
 	HitRecord Renderer::TraceRay(const Ray& ray)
 	{
-		const Object* closestObject = nullptr;
+		int closestObjectIndex = -1;
 		float closestT = FLT_MAX;
+		const std::vector<Object*>& objects = m_ActiveScene->GetObjects();
 
-		for each (const auto & object in m_ActiveScene->GetObjects())
+		for(int i = 0; i < objects.size(); i++)
 		{
 			float t = 0.0f;
-			bool hit = object->Intersect(ray, t);
+			bool hit = objects[i]->Intersect(ray, t);
 
 			if (!hit)
 			{
 				continue;
 			}
 
-			else if (t < closestT)
+			else if (t > 0.0f &&  t < closestT)
 			{
-				closestObject = object;
+				closestObjectIndex = i;
 				closestT = t;
 			}
 		}
 
-		if (!closestObject)
+		if (closestObjectIndex < 0.0f)
 		{
 			return Miss();
 		}
 
-		return ClosestHit(ray, closestObject, closestT);
+		return ClosestHit(ray, closestT, closestObjectIndex);
 
 	}
-	HitRecord Renderer::ClosestHit(const Ray& ray, const Object* object, float t)
-	{
-		HitRecord hitRecord;
 
+	HitRecord Renderer::ClosestHit(const Ray& ray, float t, int objectIndex)
+	{
+		const Object* closestObject = m_ActiveScene->GetObjects()[objectIndex];
+
+		HitRecord hitRecord;
 		hitRecord.HitPoint = ray.GetOrigin() + t * ray.GetDirection();
-		hitRecord.HitNormal = glm::normalize(hitRecord.HitPoint - object->m_Position);
-		hitRecord.Color = object->m_Color;
+		hitRecord.HitNormal = glm::normalize(hitRecord.HitPoint - closestObject->m_Position);
+		hitRecord.ObjectIndex = objectIndex;
 
 		return hitRecord;
 	}

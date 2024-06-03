@@ -18,20 +18,34 @@ public:
 	ExampleLayer()
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
+		Material& blueSphere = m_Scene.m_Materials.emplace_back();
+		blueSphere.Albedo = glm::vec3(0.0f, 0.0f, 1.0f);
+		blueSphere.Roughness = 0.5f;
+
+		Material& redSphere = m_Scene.m_Materials.emplace_back();
+		redSphere.Albedo = glm::vec3(1.0f, 0.0f, 0.0f);
+		redSphere.Roughness = 0.5f;
+
 		Sphere* sphere1 = new Sphere();
-		sphere1->m_Radius = 0.1f;
+		sphere1->m_Position = { 0.0f, -101.0f, 0.0f };
+		sphere1->m_Radius = 100.0f;
+		sphere1->m_MaterialIndex = 0;
 
 		Sphere* sphere2 = new Sphere();
-		sphere2->m_Color = { 0.0f, 1.0f, 1.0f };
-		sphere2->m_Radius = 0.1f;
-		sphere2->m_Position = { 1.0f, 0.0f, -5.0f };
+		sphere2->m_Radius = 1.0f;
+		sphere2->m_Position = { 0.0f, 0.0f, 0.0f };
+		sphere2->m_MaterialIndex = 1;
+
 		m_Scene.Add(sphere2);
 		m_Scene.Add(sphere1);
 	}
 
 	virtual void OnUpdate(float ts) override
 	{
-		m_Camera.Update(ts);
+		if (m_Camera.Update(ts))
+		{
+			m_Renderer.ResetFrameIndex();
+		}
 		
 	}
 
@@ -43,14 +57,32 @@ public:
 		{
 			Render();
 		}
+
+		if (ImGui::Button("Reset"))
+		{
+			m_Renderer.ResetFrameIndex();
+		}
 		ImGui::End();
 
 		ImGui::Begin("Scene Options");
-		ImGui::DragFloat3("Position", glm::value_ptr(m_Scene.m_Objects[0]->m_Position), 0.1f);
-		//ImGui::DragFloat("Radius", &m_Scene.m_Objects[0].Radius, 0.1f);
-		ImGui::ColorPicker3("Color", glm::value_ptr(m_Scene.m_Objects[0]->m_Color));
+		for(int i = 0; i < m_Scene.GetObjects().size(); i++)
+		{
+			Object* object = m_Scene.m_Objects[i];
+
+			ImGui::PushID(i);
+			ImGui::Text("Object %d", i);
+			ImGui::DragFloat3("Position", glm::value_ptr(object->m_Position), 0.1f);
+			//ImGui::DragFloat("Radius", &object->m_Radius, 0.1f);
+
+			ImGui::ColorEdit3("Color", glm::value_ptr(m_Scene.m_Materials[object->m_MaterialIndex].Albedo));
+			ImGui::DragFloat("Roughness", &(m_Scene.m_Materials[object->m_MaterialIndex].Roughness), 0.1f, 0.0f, 1.0f);
+			ImGui::DragFloat("Metallic", &m_Scene.m_Materials[object->m_MaterialIndex].Metallic, 0.1f, 0.0f, 1.0f);
+
+			ImGui::PopID();
+		}
 		ImGui::End();
 
+		ImGui::ShowDemoWindow();
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Viewport");
 		m_ViewportHeight = ImGui::GetContentRegionAvail().y;

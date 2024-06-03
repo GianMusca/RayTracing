@@ -2,16 +2,6 @@
 
 #include "glm\glm.hpp"
 
-struct HitRecord 
-{
-	glm::vec3 HitNormal{ 0.0f };
-	glm::vec3 HitPoint{ 0.0f };
-	float HitScalar = 0.0f;
-
-	glm::vec3 Color{ 0.0f };
-};
-
-
 class Ray
 {
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Object.h"
+#include"Material.h"
 
 #include "glm\glm.hpp"
 
@@ -23,7 +24,7 @@ public:
 			return false;
 		}
 
-		float t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
+		//float t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
 		float t2 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
 
 		t = t2;
@@ -42,12 +43,14 @@ public:
 	Scene() = default;
 
 	const std::vector<Object*>& Scene::GetObjects() const { return m_Objects; }
+	const std::vector<Material>& Scene::GetMaterials() const { return m_Materials; }
+
 	void Add(Object* sphere);
 	void Clear();
 
+public:
 	std::vector<Object*> m_Objects;
-
-private:
+	std::vector<Material> m_Materials;
 
 };
 
